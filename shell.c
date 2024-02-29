@@ -1,53 +1,74 @@
 #include "shell.h"
 
-int main(int argc, char *argv[])
+
+int main(void)
 {
-	(void)argv;
+	char command[MAX_COMMAND_LENGTH];
+	char **args;
+	char cwd[1024];
 
-	if (argc > 1)
+	printf("$ ");
+	fflush(stdout); /** keeps accepting the command without exiting **/
+
+	while(1)
 	{
-		/** not interactive **/
-		char command[MAX_COMMAND_LENGTH];
-
-		/** loop to get command and execute **/
-		while (fgets(command, MAX_COMMAND_LENGTH, stdin) != NULL)
+		/** geting end of file **/
+		if (fgets(command, MAX_COMMAND_LENGTH, stdin) == NULL)
 		{
-			command[strcspn(command, "\n")] = '\0';
-
-			/** executing command **/
-			unix_interpreter(command);
+			printf("\n");
+			break;
 		}
-	}
-	else
-	{
-		char command[MAX_COMMAND_LENGTH]; /** interactive**/
-		while (1)
+
+		/** removing white space **/
+		command[strcspn(command, "\n")] = '\0';
+	
+		/** parsing command to argyument **/
+		args = token_command(command);
+
+		if (args[0] != NULL)
 		{
-			printf("$ ");
-			fflush(stdout);
-
-			/** getting command fron user **/
-			if (fgets(command, MAX_COMMAND_LENGTH, stdin) == NULL)
+			if (strcmp(args[0], "exit") == 0)
 			{
-				printf("\n");
-				printf("Exiting...\n");
-				return (0);
-		}
-			/** removing new line **/
-			command[strcspn(command, "\n")] = '\0';
-
-			/** checking exit command **/
-			if (strcmp(command, "exit") == 0)
-			{
-				printf("\n");
-				printf("Exiting...\n");
-
+				printf("Exitting...\n");
 				sleep(2);
-
-				return (0);
+				break;
 			}
-			unix_interpreter(command);
+			else if (strcmp(args[0], "cd") == 0)
+			{
+				if (args[1] == NULL)
+				{
+					printf("Error: no directory provided\n");
+				}
+
+				else
+				{
+					if (chdir(args[1]) == 0)
+					{
+						/** directory changed **/
+						if (getcwd(cwd, sizeof(cwd)) != NULL)
+						{
+							printf("/%s ", cwd);
+							fflush(stdout);
+						}
+						else {
+							perror("getcwd");
+						}
+					}
+					else
+					{
+						perror("chdir");
+					}
+				}
+			}
+			else
+			{
+				command_execute(args);
+			}
 		}
+		/** display prompt again **/
+		printf("$ ");
+		fflush(stdout);
 	}
+
 	return (0);
 }
