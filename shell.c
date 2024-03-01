@@ -1,51 +1,44 @@
 #include "shell.h"
+
 /**
- * main - Main arguments functions
- * @ac: Count of argumnents
- * @av: Arguments
- * @env: Environment
- * Return: _exit = 0.
+ * main - entry point
+ * @ac: arg count
+ * @av: arg vector
+ *
+ * Return: 0 on success, 1 on error
  */
-int main(int ac, char **av, char **env)
+int main(int ac, char **av)
 {
-	int pathValue = 0, status = 0, is_path = 0;
-	char *line = NULL, /**ptr to inpt*/ **commands = NULL; /**tokenized commands*/
-	(void)ac;
-	while (1)/* loop until exit */
+	info_t info[] = { INFO_INIT };
+	int fd = 2;
+
+	asm ("mov %1, %0\n\t"
+		"add $3, %0"
+		: "=r" (fd)
+		: "r" (fd));
+
+	if (ac == 2)
 	{
-		errno = 0;
-		line = _getline_command();/** reads user input*/
-		if (line == NULL && errno == 0)
-			return (0);
-		if (line)
+		fd = open(av[1], O_RDONLY);
+		if (fd == -1)
 		{
-			pathValue++;
-			commands = tokenize(line);/** tokenizes or parse user input*/
-			if (!commands)
-				free(line);
-			if (!_strcmp(commands[0], "env"))/**checks if user wrote env"*/
-				_getenv(env);
-			else
+			if (errno == EACCES)
+				exit(126);
+			if (errno == ENOENT)
 			{
-				is_path = _values_path(&commands[0], env);/** tokenizes PATH*/
-				status = _fork_fun(commands, av, env, line, pathValue, is_path);
-					if (status == 200)
-					{
-						free(line);
-						return (0);
-					}
-				if (is_path == 0)
-					free(commands[0]);
+				_eputs(av[0]);
+				_eputs(": 0: Can't open ");
+				_eputs(av[1]);
+				_eputchar('\n');
+				_eputchar(BUF_FLUSH);
+				exit(127);
 			}
-			free(commands); /*free up memory*/
+			return (EXIT_FAILURE);
 		}
-		else
-		{
-			if (isatty(STDIN_FILENO))
-				write(STDOUT_FILENO, "\n", 1);/** Writes to standard output*/
-			exit(status);
-		}
-		free(line);
+		info->readfd = fd;
 	}
-	return (status);
+	populate_env_list(info);
+	read_history(info);
+	hsh(info, av);
+	return (EXIT_SUCCESS);
 }
